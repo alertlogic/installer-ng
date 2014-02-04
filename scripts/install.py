@@ -8,6 +8,8 @@ import subprocess
 import string
 import json
 import shutil
+import commands 
+
 from distutils import spawn
 
 
@@ -15,9 +17,9 @@ CHEF_INSTALL_URL = "https://www.opscode.com/chef/install.sh"
 COOKBOOK_PKG_URL = "https://github.com/Scalr/installer-ng/releases/download/v0.2.1/package.tar.gz"
 
 SCALR_NAME = "scalr"
-SCALR_VERSION = "4.5.1"
-SCLAR_PKG_URL = "https://github.com/Scalr/scalr/archive/v{0}.tar.gz".format(SCALR_VERSION)
-SCALR_PKG_CHECKSUM = "fea5a5bcf8e63c7d0fcc164c1a21f204a50857eaf2cf73136fe5c410e6718ff2"
+SCALR_VERSION = "master"
+SCLAR_PKG_URL = "https://github.com/alertlogic/scalr/archive/{0}.tar.gz".format(SCALR_VERSION)
+SCALR_PKG_CHECKSUM = commands.getoutput("curl -L %s 2>/dev/null | sha256sum | cut -d' ' -f 1 | tr -d [:space:]" % (SCLAR_PKG_URL))
 
 SCALR_DEPLOY_TO = "/opt/scalr"
 SCALR_LOCATION = os.path.join(SCALR_DEPLOY_TO, "releases", SCALR_VERSION, "{0}-{1}".format(SCALR_NAME, SCALR_VERSION))
@@ -260,13 +262,22 @@ class InstallWrapper(object):
     def create_configuration_files(self):
         print("Outputting configuration")
 
+        solo_config = None
         if os.path.exists(self.solo_json_path):
             self.load_config()
-            print("JSON Configuration already exists. Using it.")
+            solo_config = self.solo_json_config
+
+        self.generate_config()
+        if solo_config:
+            new_config = self.solo_json_config
+            print("Replace package information of existing config with new config")
+            solo_config['scalr']['core'] = new_config['scalr']['core']
+            solo_config['scalr']['admin'] = new_config['scalr']['admin']
         else:
-            self.generate_config()
-            with open(self.solo_json_path, "w") as f:
-                json.dump(self.solo_json_config, f)
+            solo_config = self.solo_json_config
+
+        with open(self.solo_json_path, "w") as f:
+            json.dump(solo_config, f)
 
         solo_rb_lines = [
             "file_cache_path '{0}'".format(self.file_cache_path),
