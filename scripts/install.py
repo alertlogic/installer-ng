@@ -8,9 +8,11 @@ import subprocess
 import string
 import json
 import shutil
-import commands 
+import commands
+import pprint
 
 from distutils import spawn
+from optparse import OptionParser
 
 
 CHEF_INSTALL_URL = "https://www.opscode.com/chef/install.sh"
@@ -168,7 +170,7 @@ class RandomPasswordGenerator(object):
         return "".join(pw_chars)
 
 
-def generate_chef_solo_config(ui, pwgen):
+def generate_chef_solo_config(ui, pwgen, clioptions):
     output = {
         "run_list":  ["recipe[scalr-core::default]"],
     }
@@ -181,32 +183,42 @@ def generate_chef_solo_config(ui, pwgen):
     }
 
     # Scalr configuration
-    output["scalr"] = {}
+    output["scalr"] = {}    
 
-    host_ip = ui.prompt_ipv4("Enter the IP (v4) address your instances should"
-                             " use to connect to this server. ",
-                             "This is not a valid IP")
+    host_ip = clioptions.host_ip
+    if host_ip is None:
+        host_ip = ui.prompt_ipv4("Enter the IP (v4) address your instances should"
+                                 " use to connect to this server. ",
+                                 "This is not a valid IP")
 
-    local_ip = ui.prompt_ipv4("Enter the local IP incoming traffic reaches"
-                              " this instance through. If you are not using"
-                              " NAT or a Cloud Elastic IP, this should be the"
-                              " same IP", "This is not a valid IP")
+    local_ip = clioptions.local_ip
+    if local_ip is None:
+        local_ip = ui.prompt_ipv4("Enter the local IP incoming traffic reaches"
+                                  " this instance through. If you are not using"
+                                  " NAT or a Cloud Elastic IP, this should be the"
+                                  " same IP", "This is not a valid IP")
 
     output["scalr"]["endpoint"] = {
         "host": host_ip,
         "host_ip": host_ip,
         "local_ip": local_ip,
     }
-
-    conn_policy = ui.prompt_select_from_options("To connect to your instances,"
-        " should Scalr use the private IP, public IP, or automatically choose"
-        " the best one? Use `auto` if you are unsure.",
-        ["auto", "public", "local"], "This is not a valid choice")
+    
+    conn_policy = clioptions.conn_policy
+    if conn_policy is None:
+        conn_policy = ui.prompt_select_from_options("To connect to your instances,"
+            " should Scalr use the private IP, public IP, or automatically choose"
+            " the best one? Use `auto` if you are unsure.",
+            ["auto", "public", "local"], "This is not a valid choice")
     output["scalr"]["instances_connection_policy"] = conn_policy
 
     output["scalr"]["admin"] = {}
     output["scalr"]["admin"]["username"] = "admin"
-    output["scalr"]["admin"]["password"] = pwgen.make_password(15)
+    
+    admin_passwd = clioptions.admin_passwd
+    if admin_passwd is None:
+        admin_passwd = pwgen.make_password(15)
+    output["scalr"]["admin"]["password"] = admin_passwd
 
     output["scalr"]["database"] = {}
     output["scalr"]["database"]["password"] = pwgen.make_password(30)
@@ -225,7 +237,7 @@ def generate_chef_solo_config(ui, pwgen):
 
 
 class InstallWrapper(object):
-    def __init__(self, work_dir, ui, pwgen):
+    def __init__(self, work_dir, ui, pwgen, clioptions):
         self.work_dir = work_dir
         self.ui = ui
         self.pwgen = pwgen
@@ -238,6 +250,8 @@ class InstallWrapper(object):
 
         # We don't change that file across runs.
         self.solo_json_path = os.path.join(os.path.expanduser("~"), "solo.json")
+        
+        self.clioptions = clioptions
 
         os.makedirs(self.cookbook_path)  # This should not exist yet
 
@@ -253,7 +267,7 @@ class InstallWrapper(object):
         return name
 
     def generate_config(self):
-        self.solo_json_config = generate_chef_solo_config(self.ui, self.pwgen)
+        self.solo_json_config = generate_chef_solo_config(self.ui, self.pwgen, self.clioptions)
 
     def load_config(self):
         with open(self.solo_json_path) as f:
@@ -341,8 +355,8 @@ class InstallWrapper(object):
         self.finish()
 
 
-def main(work_dir, ui, pwgen):
-    wrapper = InstallWrapper(work_dir, ui, pwgen)
+def main(work_dir, ui, pwgen, clioptions):
+    wrapper = InstallWrapper(work_dir, ui, pwgen, clioptions)
     wrapper.install()
 
 
@@ -350,6 +364,14 @@ if __name__ == "__main__":
     if os.geteuid() != 0:
         print("This script should run as root")
         sys.exit(1)
+        
+    parser = OptionParser()
+    parser.add_option("-e", "--host-ip", dest="host_ip", help="IP to use for external communication")
+    parser.add_option("-l", "--local-ip", dest="local_ip", help="IP to use for internal scalr communucation")
+    parser.add_option("-p", "--connection-policy", dest="conn_policy", help="Available modes: local, public, auto")
+    parser.add_option("-a", "--admin-password", dest="admin_passwd", help="Scalr administrator password")
+    
+    (clioptions, args) = parser.parse_args()
 
     current_dir = os.getcwd()
     work_dir = tempfile.mkdtemp()
@@ -358,7 +380,7 @@ if __name__ == "__main__":
         os.chdir(work_dir)
         ui = UserInput(raw_input, print)
         pwgen = RandomPasswordGenerator(os.urandom)
-        attributes = main(work_dir, ui, pwgen)
+        attributes = main(work_dir, ui, pwgen, clioptions)
     except KeyboardInterrupt:
         print("Exiting on user interrupt")
     finally:
