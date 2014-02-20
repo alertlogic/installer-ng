@@ -16,19 +16,19 @@ end
 
 cron "Scaling" do
   user node[:scalr][:core][:users][:service]
-  minute "*/2"
+  minute "*/1"
   command "#{ng_cmd} --Scaling"
 end
 
 cron "SzrMessaging" do
   user node[:scalr][:core][:users][:service]
-  minute "*/2"
+  minute "*/1"
   command "#{cmd} --SzrMessaging --piddir #{node[:scalr][:core][:pid_dir]}"
 end
 
 cron "BundleTasksManager" do
   user node[:scalr][:core][:users][:service]
-  minute "*/2"
+  minute "*/1"
   command "#{cmd} --BundleTasksManager"
 end
 
@@ -40,7 +40,7 @@ end
 
 cron "Poller" do
   user node[:scalr][:core][:users][:service]
-  minute "*/2"
+  minute "*/1"
   command "#{ng_cmd} --Poller"
 end
 
@@ -58,7 +58,7 @@ end
 
 cron "EBSManager" do
   user node[:scalr][:core][:users][:service]
-  minute "*/2"
+  minute "*/1"
   command "#{cmd} --EBSManager"
 end
 
