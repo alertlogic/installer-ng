@@ -48,4 +48,4 @@ include_recipe 'scalr-core::validate'
 
 # Set admin login
 include_recipe 'scalr-core::admin'
-include_recipe 'scalr-core::account_owner'
+#include_recipe 'scalr-core::account_owner'

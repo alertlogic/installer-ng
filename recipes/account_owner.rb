@@ -7,9 +7,15 @@ h = Digest::SHA256.new
 h.update node[:scalr][:account_owner][:password]
 
 owner_id = 2
+account_id = 1
+
+execute "Add account info" do
+  command "mysql #{mysql_conn_params} -e \"INSERT INTO clients(id, name, status) VALUES (#{account_id}, 'Default Account', 'Active')\""
+  not_if "mysql #{mysql_conn_params} -e \"SELECT id FROM clients WHERE id=#{account_id}\" | grep #{account_id}"  # Data from Scalr 4.5.1
+end
 
 execute "Add account owner record" do
-  command "mysql #{mysql_conn_params} -e \"INSERT INTO account_users(id, account_id, status, email, type) VALUES (#{owner_id}, 1, 'Active', '#{node[:scalr][:account_owner][:username]}', 'AccountOwner')\""
+  command "mysql #{mysql_conn_params} -e \"INSERT INTO account_users(id, account_id, status, email, type) VALUES (#{owner_id}, #{account_id}, 'Active', '#{node[:scalr][:account_owner][:username]}', 'AccountOwner')\""
   not_if "mysql #{mysql_conn_params} -e \"SELECT id FROM account_users WHERE id=#{owner_id}\" | grep #{owner_id}"  # Data from Scalr 4.5.1
 end
 
