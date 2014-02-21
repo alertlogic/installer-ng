@@ -51,12 +51,19 @@ root : `{root_mysql_password}`
 scalr: `{scalr_mysql_password}`
 
 
--- Login credentials --
+-- Admin Login credentials --
 
 Use these credentials to login to Scalr's web control panel.
 
 Username: `{scalr_admin_username}`
 Password: `{scalr_admin_password}`
+
+-- Account Owner Login credentials --
+
+Use these credentials to login to Scalr's web control panel.
+
+Username: `{scalr_owner_username}`
+Password: `{scalr_owner_password}`
 
 
 -- Accessing Scalr --
@@ -212,13 +219,23 @@ def generate_chef_solo_config(ui, pwgen, clioptions):
             ["auto", "public", "local"], "This is not a valid choice")
     output["scalr"]["instances_connection_policy"] = conn_policy
 
+    # define administrator credentials
     output["scalr"]["admin"] = {}
-    output["scalr"]["admin"]["username"] = "admin"
+    output["scalr"]["admin"]["username"] = "admin@alertlogic.com"
     
     admin_passwd = clioptions.admin_passwd
     if admin_passwd is None:
         admin_passwd = pwgen.make_password(15)
     output["scalr"]["admin"]["password"] = admin_passwd
+    
+    # define account owner credentials
+    output["scalr"]["account_owner"] = {}
+    output["scalr"]["account_owner"]["username"] = "manager@alertlogic.com"
+    
+    owner_passwd = clioptions.admin_passwd
+    if owner_passwd is None:
+        owner_passwd = pwgen.make_password(15)
+    output["scalr"]["account_owner"]["password"] = owner_passwd
 
     output["scalr"]["database"] = {}
     output["scalr"]["database"]["password"] = pwgen.make_password(30)
@@ -340,6 +357,8 @@ class InstallWrapper(object):
             scalr_mysql_password=self.solo_json_config["scalr"]["database"]["password"],
             scalr_admin_username=self.solo_json_config["scalr"]["admin"]["username"],
             scalr_admin_password=self.solo_json_config["scalr"]["admin"]["password"],
+            scalr_owner_username=self.solo_json_config["scalr"]["account_owner"]["username"],
+            scalr_owner_password=self.solo_json_config["scalr"]["account_owner"]["password"],
             scalr_id_file=id_file_path,
             scalr_id=scalr_id,
             sync_shared_roles_script=sync_shared_roles_script,
@@ -370,6 +389,7 @@ if __name__ == "__main__":
     parser.add_option("-l", "--local-ip", dest="local_ip", help="IP to use for internal scalr communucation")
     parser.add_option("-p", "--connection-policy", dest="conn_policy", help="Available modes: local, public, auto")
     parser.add_option("-a", "--admin-password", dest="admin_passwd", help="Scalr administrator password")
+    parser.add_option("-o", "--owner-password", dest="owner_passwd", help="Scalr account owner password")
     
     (clioptions, args) = parser.parse_args()
 

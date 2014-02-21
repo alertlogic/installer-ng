@@ -17,3 +17,4 @@ execute "Set Admin Password" do
   command "mysql #{mysql_conn_params} -e \"UPDATE account_users SET password='#{h.hexdigest}' WHERE id=#{admin_id}\""
   not_if "mysql #{mysql_conn_params} -e \"SELECT id FROM account_users WHERE id=#{admin_id} AND password='#{h.hexdigest}'\" | grep 1"  # Data from Scalr 4.5.1
 end
+
