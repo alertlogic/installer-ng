@@ -16,7 +16,7 @@ from optparse import OptionParser
 
 
 CHEF_INSTALL_URL = "https://www.opscode.com/chef/install.sh"
-COOKBOOK_PKG_URL = "https://github.com/Scalr/installer-ng/releases/download/v0.2.1/package.tar.gz"
+COOKBOOK_PKG_URL = "https://github.com/alertlogic/installer-ng/archive/master.tar.gz"
 
 SCALR_NAME = "scalr"
 SCALR_VERSION = "master"
@@ -334,6 +334,9 @@ class InstallWrapper(object):
             raise RuntimeError("tar is not available. Please install it.")
         pkg = self._download(COOKBOOK_PKG_URL)
         subprocess.check_call(["tar", "xzvf", pkg, "-C", self.cookbook_path])
+        subprocess.check_call(["mv", self.cookbook_path + "/installer-ng-master", self.cookbook_path + "/scalr-core"])
+        subprocess.check_call(["berks", "install", "-b", self.cookbook_path + "/scalr-core/Berksfile", "-p", self.cookbook_path])
+        
 
     def install_scalr(self):
         print("Launching Chef Solo")
